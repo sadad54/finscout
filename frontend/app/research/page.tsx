@@ -46,6 +46,7 @@ export default function ResearchPage() {
       setMarkdown(event.markdown);
     } else if (event.type === "error") {
       setError(event.detail);
+      setActiveStage(null);
     }
   }
 
@@ -66,6 +67,7 @@ export default function ResearchPage() {
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "request failed");
+      setActiveStage(null);
     } finally {
       setLoading(false);
     }
