@@ -41,6 +41,47 @@ def gather_evidence_and_report(ticker: str, company: str) -> tuple[dict, dict]:
     return evidence, report
 
 
+def run_research_events(ticker: str, company: str):
+    """Run the research pipeline, yielding an event per stage instead of
+    returning only the final markdown. Powers the `/research/stream` SSE
+    endpoint. Deliberately separate from `gather_evidence_and_report` (used
+    by the eval harness) rather than a refactor of it, so this addition
+    carries zero risk to eval scoring.
+
+    Events:
+        {"type": "stage", "stage": str, "status": "start"}
+        {"type": "stage", "stage": str, "status": "done", "result": Any}
+        {"type": "final", "markdown": str}
+    """
+    yield {"type": "stage", "stage": "market_data", "status": "start"}
+    market_data = get_market_snapshot(ticker)
+    yield {"type": "stage", "stage": "market_data", "status": "done", "result": market_data}
+
+    yield {"type": "stage", "stage": "news", "status": "start"}
+    recent_news = get_recent_headlines(ticker)
+    yield {"type": "stage", "stage": "news", "status": "done", "result": recent_news}
+
+    yield {"type": "stage", "stage": "risk_factors", "status": "start"}
+    risk_excerpts = search_filing_content(company, "main risk factors", top_k=3)
+    yield {"type": "stage", "stage": "risk_factors", "status": "done", "result": risk_excerpts}
+
+    yield {"type": "stage", "stage": "business_overview", "status": "start"}
+    overview_excerpts = search_filing_content(
+        company, "business overview and main products or services", top_k=3
+    )
+    yield {"type": "stage", "stage": "business_overview", "status": "done", "result": overview_excerpts}
+
+    evidence = {
+        "market_data": market_data,
+        "recent_news": recent_news,
+        "risk_factors_excerpts": risk_excerpts,
+        "business_overview_excerpts": overview_excerpts,
+    }
+    report = generate_report(ticker, company, evidence)
+    markdown = render_markdown(ticker, report)
+    yield {"type": "final", "markdown": markdown}
+
+
 def run_research(ticker: str, company: str) -> str:
     """Gather evidence on `company`/`ticker` and return a markdown research brief."""
     evidence, report = gather_evidence_and_report(ticker, company)
