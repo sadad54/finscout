@@ -59,3 +59,8 @@ def test_research_returns_502_on_failure(mock_run_research):
     resp = client.post("/research", json={"ticker": "TSLA", "company": "Tesla, Inc."})
 
     assert resp.status_code == 502
+
+
+def test_cors_allows_frontend_origin():
+    resp = client.get("/health", headers={"Origin": "http://localhost:3000"})
+    assert resp.headers["access-control-allow-origin"] == "http://localhost:3000"

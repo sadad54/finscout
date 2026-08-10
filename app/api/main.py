@@ -15,7 +15,10 @@ those modules.
 """
 from __future__ import annotations
 
+import os
+
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from app.agent.orchestrator import run_agent
@@ -25,6 +28,15 @@ app = FastAPI(
     title="FinScout API",
     description="Public markets research agent - tool use, RAG, and agentic Q&A over free financial data sources.",
     version="0.1.0",
+)
+
+FRONTEND_ORIGIN = os.environ.get("FRONTEND_ORIGIN", "http://localhost:3000")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=[FRONTEND_ORIGIN],
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
 
