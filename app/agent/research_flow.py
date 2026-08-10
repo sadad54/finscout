@@ -22,16 +22,12 @@ from app.synthesis.report_writer import generate_report, render_markdown
 from app.tools.market_data import get_market_snapshot
 from app.tools.news_feed import get_recent_headlines
 
+def gather_evidence_and_report(ticker: str, company: str) -> tuple[dict, dict]:
+    """Gather evidence and synthesize it into a report dict (not yet rendered).
 
-def run_research(ticker: str, company: str) -> str:
-    """Gather evidence on `company`/`ticker` and return a markdown research brief.
-
-    Note: this takes both a ticker (for market_data/news_feed, which are
-    ticker-keyed) and a company name (for EDGAR search, which is name-keyed).
-    Resolving one from the other automatically is a reasonable next feature
-    — SEC publishes a free ticker-to-company lookup at
-    https://www.sec.gov/files/company_tickers.json — but is out of scope
-    for this module.
+    Split out from run_research so the eval harness (Module 5) can score
+    the report against the evidence it came from, without re-parsing
+    rendered markdown back into structured data.
     """
     evidence = {
         "market_data": get_market_snapshot(ticker),
@@ -41,6 +37,11 @@ def run_research(ticker: str, company: str) -> str:
             company, "business overview and main products or services", top_k=3
         ),
     }
-
     report = generate_report(ticker, company, evidence)
+    return evidence, report
+
+
+def run_research(ticker: str, company: str) -> str:
+    """Gather evidence on `company`/`ticker` and return a markdown research brief."""
+    evidence, report = gather_evidence_and_report(ticker, company)
     return render_markdown(ticker, report)
