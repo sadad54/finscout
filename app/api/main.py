@@ -16,6 +16,7 @@ those modules.
 from __future__ import annotations
 
 import json
+import logging
 import os
 
 from fastapi import FastAPI, HTTPException
@@ -25,6 +26,8 @@ from pydantic import BaseModel, Field
 
 from app.agent.orchestrator import run_agent, run_agent_events
 from app.agent.research_flow import run_research, run_research_events
+
+logger = logging.getLogger(__name__)
 
 app = FastAPI(
     title="FinScout API",
@@ -103,6 +106,7 @@ def _sse_stream(events):
         for event in events:
             yield _sse_event(event)
     except Exception as exc:
+        logger.exception("stream failed")
         yield _sse_event({"type": "error", "detail": str(exc)})
 
 

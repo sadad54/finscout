@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
+import { motion } from "framer-motion";
 import { checkHealth } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -35,24 +36,38 @@ export function Nav() {
         <span className="font-mono text-sm font-semibold tracking-tight text-accent-green">
           FinScout
         </span>
-        {LINKS.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className={cn(
-              "text-sm transition-colors hover:text-foreground",
-              pathname === link.href ? "text-foreground" : "text-muted-foreground"
-            )}
-          >
-            {link.label}
-          </Link>
-        ))}
+        {LINKS.map((link) => {
+          const isActive = pathname === link.href;
+          return (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={cn(
+                "relative pb-1 text-sm transition-colors hover:text-foreground",
+                isActive ? "text-foreground" : "text-muted-foreground"
+              )}
+            >
+              {link.label}
+              {isActive && (
+                <motion.div
+                  layoutId="nav-underline"
+                  className="absolute -bottom-[1px] left-0 right-0 h-[2px] rounded-full bg-accent-green"
+                  transition={{ type: "spring", stiffness: 500, damping: 35 }}
+                />
+              )}
+            </Link>
+          );
+        })}
       </div>
       <div className="flex items-center gap-2 text-xs text-muted-foreground">
         <span
           className={cn(
-            "h-2 w-2 rounded-full",
-            healthy === null ? "bg-muted-foreground" : healthy ? "bg-accent-green" : "bg-accent-red"
+            "h-2 w-2 rounded-full transition-colors duration-300",
+            healthy === null
+              ? "bg-muted-foreground"
+              : healthy
+                ? "bg-accent-green shadow-[0_0_8px_rgba(36,194,121,0.6)]"
+                : "bg-accent-red"
           )}
         />
         {healthy === null ? "connecting…" : healthy ? "backend online" : "backend unreachable"}

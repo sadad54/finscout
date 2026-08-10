@@ -3,11 +3,12 @@ import { ButtonHTMLAttributes, forwardRef } from "react";
 import { cn } from "@/lib/utils";
 
 const buttonVariants = cva(
-  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-green",
+  "inline-flex items-center justify-center rounded-md text-sm font-medium transition-all duration-150 active:scale-[0.98] disabled:pointer-events-none disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent-green",
   {
     variants: {
       variant: {
-        default: "bg-accent-green text-black hover:bg-accent-green/90",
+        default:
+          "bg-accent-green text-black shadow-md shadow-accent-green/20 hover:bg-accent-green/90 hover:shadow-accent-green/30",
         outline: "border border-border bg-transparent text-foreground hover:bg-card",
       },
       size: {

@@ -20,18 +20,27 @@ type MarketData = {
   error?: string;
 };
 
+const compactNumber = new Intl.NumberFormat("en-US", {
+  notation: "compact",
+  maximumFractionDigits: 2,
+});
+
 export default function ResearchPage() {
   const [ticker, setTicker] = useState("");
   const [company, setCompany] = useState("");
   const [doneStages, setDoneStages] = useState<Set<string>>(new Set());
+  const [activeStage, setActiveStage] = useState<string | null>(null);
   const [marketData, setMarketData] = useState<MarketData | null>(null);
   const [markdown, setMarkdown] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
   function applyEvent(event: ResearchEvent) {
-    if (event.type === "stage" && event.status === "done") {
+    if (event.type === "stage" && event.status === "start") {
+      setActiveStage(event.stage);
+    } else if (event.type === "stage" && event.status === "done") {
       setDoneStages((prev) => new Set(prev).add(event.stage));
+      setActiveStage((prev) => (prev === event.stage ? null : prev));
       if (event.stage === "market_data") setMarketData(event.result as MarketData);
     } else if (event.type === "final") {
       setMarkdown(event.markdown);
@@ -45,6 +54,7 @@ export default function ResearchPage() {
     if (!ticker.trim() || !company.trim() || loading) return;
 
     setDoneStages(new Set());
+    setActiveStage(null);
     setMarketData(null);
     setMarkdown(null);
     setError(null);
@@ -86,7 +96,7 @@ export default function ResearchPage() {
         </Button>
       </form>
 
-      {(loading || doneStages.size > 0) && <PipelineTracker done={doneStages} />}
+      {(loading || doneStages.size > 0) && <PipelineTracker done={doneStages} active={activeStage} />}
 
       {marketData && !marketData.error && (
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -97,7 +107,7 @@ export default function ResearchPage() {
           <StatTile label="P/E" value={marketData.pe_ratio ? String(marketData.pe_ratio) : "—"} />
           <StatTile
             label="Market cap"
-            value={marketData.market_cap ? marketData.market_cap.toLocaleString() : "—"}
+            value={marketData.market_cap ? compactNumber.format(marketData.market_cap) : "—"}
           />
           <StatTile
             label="52w range"
