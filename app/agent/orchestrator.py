@@ -155,12 +155,15 @@ def _run_tool(name: str, arguments: dict) -> dict:
         return {"error": f"tool '{name}' failed: {exc}"}
 
 
-def run_agent(question: str, verbose: bool = False) -> str:
-    """Run the agent loop for a single research question, return the final answer.
+def run_agent_events(question: str, verbose: bool = False):
+    """Run the agent loop, yielding an event per step instead of returning
+    only the final answer. Powers both `run_agent` below and the
+    `/ask/stream` SSE endpoint - one implementation, two consumers.
 
-    `verbose=True` prints each tool call as it happens - useful while
-    developing, and useful in an interview demo to show the reasoning
-    trace instead of just the final text.
+    Events:
+        {"type": "tool_call", "tool": str, "args": dict}
+        {"type": "tool_result", "tool": str, "result": dict}
+        {"type": "final", "content": str}
     """
     client = Groq(api_key=os.environ["GROQ_API_KEY"])
     messages: list[ChatCompletionMessageParam] = [
@@ -190,13 +193,12 @@ def run_agent(question: str, verbose: bool = False) -> str:
         choice = response.choices[0].message
 
         if not choice.tool_calls:
-            return choice.content or ""  # model is done - no more tools requested
+            yield {"type": "final", "content": choice.content or ""}
+            return
 
         # The model asked for one or more tool calls. Append its request to
         # history first (the API requires the assistant's tool_calls message
         # to precede the tool result messages), then run each tool.
-        # Only include fields Groq accepts on replay - model_dump() also
-        # includes newer SDK fields (e.g. "annotations") that the API rejects.
         messages.append(cast(ChatCompletionMessageParam, {
             "role": "assistant",
             "content": choice.content,
@@ -207,11 +209,30 @@ def run_agent(question: str, verbose: bool = False) -> str:
             args = json.loads(call.function.arguments)
             if verbose:
                 print(f"[tool call] {call.function.name}({args})")
+            yield {"type": "tool_call", "tool": call.function.name, "args": args}
             result = _run_tool(call.function.name, args)
+            yield {"type": "tool_result", "tool": call.function.name, "result": result}
             messages.append({
                 "role": "tool",
                 "tool_call_id": call.id,
                 "content": json.dumps(result),
             })
 
-    return "I hit the maximum number of research steps without reaching a final answer - try narrowing the question."
+    yield {
+        "type": "final",
+        "content": "I hit the maximum number of research steps without reaching a final answer - try narrowing the question.",
+    }
+
+
+def run_agent(question: str, verbose: bool = False) -> str:
+    """Run the agent loop for a single research question, return the final answer.
+
+    Thin wrapper over `run_agent_events` - drains the generator and returns
+    just the final answer, for callers that only need the end result (CLI,
+    eval harness).
+    """
+    final = ""
+    for event in run_agent_events(question, verbose=verbose):
+        if event["type"] == "final":
+            final = event["content"]
+    return final

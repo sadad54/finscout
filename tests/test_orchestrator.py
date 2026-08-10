@@ -1,7 +1,7 @@
 import json
 from unittest.mock import MagicMock, patch
 
-from app.agent.orchestrator import _run_tool, run_agent
+from app.agent.orchestrator import _run_tool, run_agent, run_agent_events
 
 
 def _make_tool_call(call_id, name, arguments):
@@ -76,3 +76,37 @@ def test_run_agent_stops_at_max_iterations(mock_groq_cls, monkeypatch):
 
     assert "maximum number of research steps" in answer
     assert mock_client.chat.completions.create.call_count == 6  # MAX_ITERATIONS
+
+
+@patch("app.agent.orchestrator.Groq")
+def test_run_agent_events_yields_tool_call_then_final(mock_groq_cls, monkeypatch):
+    monkeypatch.setenv("GROQ_API_KEY", "test-key")
+    mock_client = MagicMock()
+    mock_groq_cls.return_value = mock_client
+
+    tool_call = _make_tool_call("call_1", "get_market_snapshot", {"ticker": "NVDA"})
+    first_message = MagicMock()
+    first_message.tool_calls = [tool_call]
+    first_message.model_dump.return_value = {"role": "assistant", "tool_calls": [tool_call]}
+    first_response = MagicMock(choices=[MagicMock(message=first_message)])
+
+    second_message = MagicMock()
+    second_message.tool_calls = None
+    second_message.content = "NVDA is trading at $120, per yfinance."
+    second_response = MagicMock(choices=[MagicMock(message=second_message)])
+
+    mock_client.chat.completions.create.side_effect = [first_response, second_response]
+
+    with patch(
+        "app.agent.orchestrator.get_market_snapshot",
+        return_value={"ticker": "NVDA", "price": 120},
+    ):
+        events = list(run_agent_events("What is NVDA trading at?"))
+
+    assert events[0] == {"type": "tool_call", "tool": "get_market_snapshot", "args": {"ticker": "NVDA"}}
+    assert events[1] == {
+        "type": "tool_result",
+        "tool": "get_market_snapshot",
+        "result": {"ticker": "NVDA", "price": 120},
+    }
+    assert events[2] == {"type": "final", "content": "NVDA is trading at $120, per yfinance."}
