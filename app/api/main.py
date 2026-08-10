@@ -15,14 +15,16 @@ those modules.
 """
 from __future__ import annotations
 
+import json
 import os
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from app.agent.orchestrator import run_agent
-from app.agent.research_flow import run_research
+from app.agent.orchestrator import run_agent, run_agent_events
+from app.agent.research_flow import run_research, run_research_events
 
 app = FastAPI(
     title="FinScout API",
@@ -85,3 +87,38 @@ def research(request: ResearchRequest) -> ResearchResponse:
     except Exception as exc:
         raise HTTPException(status_code=502, detail=f"research pipeline failed: {exc}") from exc
     return ResearchResponse(ticker=request.ticker.upper(), report_markdown=markdown)
+
+
+def _sse_event(payload: dict) -> str:
+    """Format one event as a Server-Sent Events data frame."""
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+def _sse_stream(events):
+    """Wrap an event generator as SSE frames, turning a mid-stream exception
+    into a final error event instead of a raw 500 - once streaming has
+    started the HTTP status is already committed, so an exception can't be
+    surfaced as a normal error response."""
+    try:
+        for event in events:
+            yield _sse_event(event)
+    except Exception as exc:
+        yield _sse_event({"type": "error", "detail": str(exc)})
+
+
+@app.post("/ask/stream")
+def ask_stream(request: AskRequest) -> StreamingResponse:
+    """Streaming variant of /ask - emits tool_call/tool_result/final events."""
+    return StreamingResponse(
+        _sse_stream(run_agent_events(request.question)),
+        media_type="text/event-stream",
+    )
+
+
+@app.post("/research/stream")
+def research_stream(request: ResearchRequest) -> StreamingResponse:
+    """Streaming variant of /research - emits per-stage progress events."""
+    return StreamingResponse(
+        _sse_stream(run_research_events(request.ticker, request.company)),
+        media_type="text/event-stream",
+    )

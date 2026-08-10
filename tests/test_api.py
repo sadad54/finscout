@@ -1,3 +1,4 @@
+import json
 from unittest.mock import patch
 
 from fastapi.testclient import TestClient
@@ -64,3 +65,59 @@ def test_research_returns_502_on_failure(mock_run_research):
 def test_cors_allows_frontend_origin():
     resp = client.get("/health", headers={"Origin": "http://localhost:3000"})
     assert resp.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+def _parse_sse(text: str) -> list[dict]:
+    events = []
+    for block in text.strip().split("\n\n"):
+        if block.startswith("data: "):
+            events.append(json.loads(block[len("data: "):]))
+    return events
+
+
+@patch("app.api.main.run_agent_events")
+def test_ask_stream_emits_events(mock_run_agent_events):
+    mock_run_agent_events.return_value = iter([
+        {"type": "tool_call", "tool": "get_market_snapshot", "args": {"ticker": "NVDA"}},
+        {"type": "tool_result", "tool": "get_market_snapshot", "result": {"price": 120}},
+        {"type": "final", "content": "NVDA is trading at $120."},
+    ])
+
+    resp = client.post("/ask/stream", json={"question": "What's NVDA at?"})
+
+    assert resp.status_code == 200
+    assert resp.headers["content-type"].startswith("text/event-stream")
+    events = _parse_sse(resp.text)
+    assert events[0]["type"] == "tool_call"
+    assert events[-1] == {"type": "final", "content": "NVDA is trading at $120."}
+
+
+@patch("app.api.main.run_agent_events")
+def test_ask_stream_emits_error_event_on_failure(mock_run_agent_events):
+    def _boom():
+        raise RuntimeError("Groq API down")
+        yield  # pragma: no cover - makes this a generator function
+
+    mock_run_agent_events.return_value = _boom()
+
+    resp = client.post("/ask/stream", json={"question": "anything"})
+
+    events = _parse_sse(resp.text)
+    assert events[-1]["type"] == "error"
+    assert "Groq API down" in events[-1]["detail"]
+
+
+@patch("app.api.main.run_research_events")
+def test_research_stream_emits_stage_and_final_events(mock_run_research_events):
+    mock_run_research_events.return_value = iter([
+        {"type": "stage", "stage": "market_data", "status": "start"},
+        {"type": "stage", "stage": "market_data", "status": "done", "result": {"price": 250}},
+        {"type": "final", "markdown": "# TSLA — Research Brief\n..."},
+    ])
+
+    resp = client.post("/research/stream", json={"ticker": "TSLA", "company": "Tesla, Inc."})
+
+    assert resp.status_code == 200
+    events = _parse_sse(resp.text)
+    assert events[0] == {"type": "stage", "stage": "market_data", "status": "start"}
+    assert events[-1]["type"] == "final"
