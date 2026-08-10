@@ -21,7 +21,7 @@ import os
 from typing import Any, cast
 
 from dotenv import load_dotenv
-from groq import Groq
+from groq import BadRequestError, Groq
 from groq.types.chat import ChatCompletionMessageParam, ChatCompletionToolParam
 from app.rag.pipeline import search_filing_content
 from app.tools.calculator import price_to_earnings
@@ -33,6 +33,11 @@ load_dotenv()
 
 MODEL = "llama-3.3-70b-versatile"
 MAX_ITERATIONS = 6  # safety cap so a confused model can't loop forever and burn quota
+TOOL_CALL_RETRIES = 2  # llama-3.3-70b-versatile occasionally emits its tool
+# call as raw text (e.g. "<function=name{...}</function>") instead of a
+# structured tool_calls response; Groq surfaces this as a 400 with code
+# "tool_use_failed". It's sampling variance, not a bad request - retrying
+# the identical request usually gets a well-formed tool call.
 
 SYSTEM_PROMPT = (
     "You are FinScout, a research assistant for public company analysis. "
@@ -164,12 +169,24 @@ def run_agent(question: str, verbose: bool = False) -> str:
     ]
 
     for _ in range(MAX_ITERATIONS):
-        response = client.chat.completions.create(
-            model=MODEL,
-            messages=messages,
-            tools=cast(list[ChatCompletionToolParam], TOOL_SCHEMAS),
-            tool_choice="auto",
-        )
+        for attempt in range(TOOL_CALL_RETRIES + 1):
+            try:
+                response = client.chat.completions.create(
+                    model=MODEL,
+                    messages=messages,
+                    tools=cast(list[ChatCompletionToolParam], TOOL_SCHEMAS),
+                    tool_choice="auto",
+                )
+                break
+            except BadRequestError as exc:
+                is_malformed_tool_call = (
+                    isinstance(exc.body, dict)
+                    and exc.body.get("error", {}).get("code") == "tool_use_failed"
+                )
+                if not is_malformed_tool_call or attempt == TOOL_CALL_RETRIES:
+                    raise
+                if verbose:
+                    print(f"[retry] malformed tool call from model, retrying ({attempt + 1}/{TOOL_CALL_RETRIES})")
         choice = response.choices[0].message
 
         if not choice.tool_calls:

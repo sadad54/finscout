@@ -1,0 +1,6 @@
+[MASTER]
+# faiss ships a SWIG-wrapped C extension; Pylint's static AST analysis
+# misparses its @overload'd stubs (add/search/etc.) and reports bogus
+# no-value-for-parameter errors. Allow-listing it makes Pylint import
+# and introspect the real compiled module instead.
+extension-pkg-allow-list=faiss

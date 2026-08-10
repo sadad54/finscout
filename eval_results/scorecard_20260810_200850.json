@@ -1,0 +1,55 @@
+{
+  "timestamp": "2026-08-10T20:08:50.772676+00:00",
+  "num_cases": 5,
+  "num_scored": 5,
+  "avg_faithfulness": 3.8,
+  "avg_completeness": 4.2,
+  "avg_groundedness": 4.6,
+  "results": [
+    {
+      "ticker": "AAPL",
+      "score": {
+        "faithfulness": 4,
+        "completeness": 4,
+        "groundedness": 5,
+        "reasoning": "The brief mostly accurately represents the market data, news articles, and financial snapshot, with some gaps due to the lack of a 10-K filing, but the sources cited are appropriate."
+      }
+    },
+    {
+      "ticker": "TSLA",
+      "score": {
+        "faithfulness": 5,
+        "completeness": 5,
+        "groundedness": 4,
+        "reasoning": "This brief demonstrated high faithfulness by accurately summarizing the company overview and financial snapshot, and correctly identifying risk factors. The completeness score is high because it addresses all the required sections and provides meaningful information. However, the groundedness score could be improved by including citations for quotes and information from the sources."
+      }
+    },
+    {
+      "ticker": "MSFT",
+      "score": {
+        "faithfulness": 3,
+        "completeness": 4,
+        "groundedness": 4,
+        "reasoning": "High faithfulness as the brief accurately reports the market data, but incomplete risk factors and business overview due to missing SEC filings, and good groundedness with proper citations but incomplete disclosure of the sources used."
+      }
+    },
+    {
+      "ticker": "NVDA",
+      "score": {
+        "faithfulness": 2,
+        "completeness": 3,
+        "groundedness": 5,
+        "reasoning": "The brief mostly accurately represents the provided evidence, although it invents no new numbers; it is incomplete in sections where evidence was available, and it correctly cites sources."
+      }
+    },
+    {
+      "ticker": "ZZZFAKE",
+      "score": {
+        "faithfulness": 5,
+        "completeness": 5,
+        "groundedness": 5,
+        "reasoning": "The brief accurately reflects the evidence, covers all required sections, and correctly cites the lack of sources for claims."
+      }
+    }
+  ]
+}

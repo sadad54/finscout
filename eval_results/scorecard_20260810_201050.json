@@ -1,0 +1,55 @@
+{
+  "timestamp": "2026-08-10T20:10:50.470626+00:00",
+  "num_cases": 5,
+  "num_scored": 5,
+  "avg_faithfulness": 4.2,
+  "avg_completeness": 3.6,
+  "avg_groundedness": 3.4,
+  "results": [
+    {
+      "ticker": "AAPL",
+      "score": {
+        "faithfulness": 4,
+        "completeness": 2,
+        "groundedness": 3,
+        "reasoning": "The brief's high faithfulness is due to its faithful portrayal of available data; however, it falls short in completeness as it relies on the lack of 10-K filings rather than attempting to find the actual data, but the lack of actual data to support most claims isn't entirely its fault."
+      }
+    },
+    {
+      "ticker": "TSLA",
+      "score": {
+        "faithfulness": 4,
+        "completeness": 4,
+        "groundedness": 4,
+        "reasoning": "Scores are high due to the brief's overall accuracy in representing the evidence and its thorough coverage of major points; however, faithfulness is docked one point for an unspecified and unverifiable market capitalization figure in the financial snapshot, which is actually provided more accurately in the evidence. Groundedness is also docked one point because sources are only listed in the 'sources' section and the brief doesn't include actual citations within the text for individual claims."
+      }
+    },
+    {
+      "ticker": "MSFT",
+      "score": {
+        "faithfulness": 4,
+        "completeness": 3,
+        "groundedness": 3,
+        "reasoning": "The brief is mostly faithful to the evidence, complete in its financial snapshot and recent news summary, but incomplete in overview and risk factors, and cites sources somewhat groundedly."
+      }
+    },
+    {
+      "ticker": "NVDA",
+      "score": {
+        "faithfulness": 4,
+        "completeness": 4,
+        "groundedness": 3,
+        "reasoning": "The brief is mostly faithful, but lacks a comprehensive overview and accurate risk factors due to missing 10-K filings. Some sources are cited, but the 'No SEC EDGAR filing available' is an excuse rather than a source."
+      }
+    },
+    {
+      "ticker": "ZZZFAKE",
+      "score": {
+        "faithfulness": 5,
+        "completeness": 5,
+        "groundedness": 4,
+        "reasoning": "The brief accurately reflects the evidence, meaningfully covers all required sections, and cites sources, albeit without specifying the exact source for the EDGAR filing retrieval attempt."
+      }
+    }
+  ]
+}

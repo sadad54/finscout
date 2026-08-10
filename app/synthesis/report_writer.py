@@ -14,7 +14,10 @@ from __future__ import annotations
 import json
 import os
 
+from dotenv import load_dotenv
 from groq import Groq
+
+load_dotenv()
 
 MODEL = "llama-3.3-70b-versatile"
 

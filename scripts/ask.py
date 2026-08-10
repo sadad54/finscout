@@ -8,6 +8,9 @@ Requires GROQ_API_KEY set in your environment (get a free key at
 https://console.groq.com).
 """
 import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from app.agent.orchestrator import run_agent
 
