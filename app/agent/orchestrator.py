@@ -20,13 +20,16 @@ import json
 import os
 from typing import Any, cast
 
+from dotenv import load_dotenv
 from groq import Groq
 from groq.types.chat import ChatCompletionMessageParam, ChatCompletionToolParam
-
+from app.rag.pipeline import search_filing_content
 from app.tools.calculator import price_to_earnings
 from app.tools.filings_search import search_filings
 from app.tools.market_data import get_market_snapshot
 from app.tools.news_feed import get_recent_headlines
+
+load_dotenv()
 
 MODEL = "llama-3.3-70b-versatile"
 MAX_ITERATIONS = 6  # safety cap so a confused model can't loop forever and burn quota
@@ -91,6 +94,22 @@ TOOL_SCHEMAS = [
     {
         "type": "function",
         "function": {
+            "name": "search_filing_content",
+            "description": "Search the text of a company's most recent SEC filing for content relevant to a specific question (e.g. risk factors, business description, revenue drivers). Use this when the question needs detail beyond price/news, e.g. 'what are Tesla's main risk factors'.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "company": {"type": "string", "description": "Company name, e.g. 'Apple Inc'"},
+                    "question": {"type": "string", "description": "What to look for in the filing"},
+                    "form_type": {"type": "string", "description": "Filing type, e.g. '10-K' or '10-Q'"},
+                },
+                "required": ["company", "question"],
+            },
+        },
+    },
+    {
+        "type": "function",
+        "function": {
             "name": "price_to_earnings",
             "description": "Compute the P/E ratio given a price and earnings-per-share.",
             "parameters": {
@@ -111,6 +130,7 @@ TOOL_REGISTRY = {
     "search_filings": lambda company, form_type="10-K": search_filings(company, form_type),
     "get_recent_headlines": lambda ticker: get_recent_headlines(ticker),
     "price_to_earnings": lambda price, eps: {"pe_ratio": price_to_earnings(price, eps)},
+    "search_filing_content": lambda company, question, form_type="10-K": search_filing_content(company, question, form_type),
 }
 
 
@@ -158,7 +178,13 @@ def run_agent(question: str, verbose: bool = False) -> str:
         # The model asked for one or more tool calls. Append its request to
         # history first (the API requires the assistant's tool_calls message
         # to precede the tool result messages), then run each tool.
-        messages.append(cast(ChatCompletionMessageParam, choice.model_dump()))
+        # Only include fields Groq accepts on replay - model_dump() also
+        # includes newer SDK fields (e.g. "annotations") that the API rejects.
+        messages.append(cast(ChatCompletionMessageParam, {
+            "role": "assistant",
+            "content": choice.content,
+            "tool_calls": [tc.model_dump() for tc in choice.tool_calls],
+        }))
 
         for call in choice.tool_calls:
             args = json.loads(call.function.arguments)
