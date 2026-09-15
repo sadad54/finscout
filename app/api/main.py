@@ -22,7 +22,7 @@ import os
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.agent.orchestrator import run_agent, run_agent_events
 from app.agent.research_flow import run_research, run_research_events
@@ -46,6 +46,8 @@ app.add_middleware(
 
 
 class AskRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     question: str = Field(..., min_length=1, description="An open-ended research question")
 
 
@@ -54,6 +56,8 @@ class AskResponse(BaseModel):
 
 
 class ResearchRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
     ticker: str = Field(..., min_length=1, description="Stock ticker, e.g. AAPL")
     company: str = Field(..., min_length=1, description="Company name, e.g. 'Apple Inc.'")
 

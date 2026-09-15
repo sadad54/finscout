@@ -4,15 +4,17 @@ Acts as the source material for the RAG pipeline in module 3. The agent calls 's
 
 from __future__ import annotations
 
+import os
 import re
 from html.parser import HTMLParser
 
+import os
 import requests
 
 SEC_SEARCH_URL = "https://efts.sec.gov/LATEST/search-index"
 # ponytail: SEC requires a real contact string in the User-Agent or requests get 403'd.
 # Swap in your own contact email before running this live.
-HEADERS = {"User-Agent": "FinScout research-agent contact@example.com"}
+HEADERS = {"User-Agent": os.environ.get("SEC_USER_AGENT", "FinScout research-agent contact@example.com")}
 
 
 def _normalize(name: str) -> str:
