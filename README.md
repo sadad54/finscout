@@ -60,3 +60,5 @@ Run `python -m app.eval.run_eval` with working provider credentials to create a
 new dated scorecard. Compare identical cases and evidence before claiming gains.
 
 Readiness validation: 52 backend tests and three frontend SSE tests passed; production build passed. Run frontend checks with `node --test scripts/test-sse.mjs`.
+
+Browser CI checks research-report and provider-error rendering using clearly labeled fixtures, then uploads screenshots. These are UI evidence, not live financial research results.

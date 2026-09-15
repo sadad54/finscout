@@ -33,3 +33,17 @@ jobs:
       - run: npm ci
       - run: node --test scripts/test-sse.mjs
       - run: npm run build
+      - run: npm install --no-save playwright@1.62.1 && npx playwright install --with-deps chromium
+      - name: Browser fixture smoke
+        run: |
+          npm run start -- --hostname 127.0.0.1 --port 3000 > /tmp/frontend.log 2>&1 &
+          for attempt in {1..30}; do
+            if curl -fsS http://localhost:3000 > /dev/null; then break; fi
+            sleep 1
+          done
+          node scripts/smoke.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: fixture-browser-evidence
+          path: frontend/screenshots/
