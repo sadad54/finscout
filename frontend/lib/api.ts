@@ -25,6 +25,7 @@ async function* streamSSE<T>(path: string, body: unknown): AsyncGenerator<T> {
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let buffer = "";
+  let terminalReceived = false;
 
   try {
     while (true) {
@@ -36,9 +37,14 @@ async function* streamSSE<T>(path: string, body: unknown): AsyncGenerator<T> {
       buffer = frames.pop() ?? "";
       for (const frame of frames) {
         const line = frame.split("\n").find((l) => l.startsWith("data: "));
-        if (line) yield JSON.parse(line.slice("data: ".length)) as T;
+        if (line) {
+          const event = JSON.parse(line.slice("data: ".length));
+          if (event.type === "final" || event.type === "error") terminalReceived = true;
+          yield event as T;
+        }
       }
     }
+    if (!terminalReceived) throw new Error("Response stream ended before completion. Please retry.");
   } finally {
     await reader.cancel().catch(() => {});
   }

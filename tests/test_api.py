@@ -121,3 +121,17 @@ def test_research_stream_emits_stage_and_final_events(mock_run_research_events):
     events = _parse_sse(resp.text)
     assert events[0] == {"type": "stage", "stage": "market_data", "status": "start"}
     assert events[-1]["type"] == "final"
+
+def test_rejects_whitespace_only_inputs():
+    assert client.post("/ask", json={"question": "   "}).status_code == 422
+    assert client.post("/research", json={"ticker": "  ", "company": "Apple"}).status_code == 422
+    assert client.post("/research", json={"ticker": "AAPL", "company": "  "}).status_code == 422
+
+
+def test_research_stream_surfaces_real_pipeline_failure():
+    with patch("app.agent.research_flow.get_market_snapshot", side_effect=RuntimeError("fixture provider unavailable")):
+        response = client.post("/research/stream", json={"ticker": "AAPL", "company": "Apple"})
+    frames = [json.loads(line[6:]) for line in response.text.splitlines() if line.startswith("data: ")]
+    assert frames[0]["type"] == "stage"
+    assert frames[-1] == {"type": "error", "detail": "fixture provider unavailable"}
+    assert not any(frame["type"] == "final" for frame in frames)
